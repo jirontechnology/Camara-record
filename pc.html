@@ -1,0 +1,29 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>Jiron Cámara</title>
+<style>body{font:15px Arial,sans-serif;background:#111;color:#eee;margin:0;padding:12px}
+input{padding:8px;margin:3px;width:30%;box-sizing:border-box}button{padding:10px 18px;font-size:16px;margin:4px}
+body{height:100vh;box-sizing:border-box;display:flex;flex-direction:column}img{flex:1;min-height:0;width:100%;object-fit:contain;background:#000;display:block;margin:8px 0}#st{margin:6px 0}</style></head><body>
+<h3>Jiron Technology – Cámara</h3>
+<input id="cl" placeholder="Cliente"><input id="or" placeholder="N° orden"><input id="eq" placeholder="Equipo">
+<select id="te"><option value="rep">Reparación en proceso</option><option value="diag">Diagnóstico</option><option value="pant">Cambio de pantalla</option><option value="bat">Batería / pin de carga</option><option value="soft">Software y desbloqueo</option><option value="listo">Reparación finalizada</option></select>
+<div><button id="go">● Iniciar grabación</button><button id="no">■ Detener</button><span id="tm"></span></div>
+<div id="st">Conectando…</div><img id="im" alt="vista previa">
+<script>
+var ws,im=document.getElementById('im'),st=document.getElementById('st'),tm=document.getElementById('tm'),t0=0,iv=null,last='';
+function g(i){return document.getElementById(i).value;}
+function pack(t){return JSON.stringify({t:t,cliente:g('cl'),orden:g('or'),equipo:g('eq'),tema:g('te')});}
+function connect(){
+  ws=new WebSocket('ws://'+location.host+'/?role=pc');ws.binaryType='blob';
+  ws.onclose=function(){st.textContent='Sin conexión con el servidor…';setTimeout(connect,1500);};
+  ws.onmessage=function(e){
+    if(typeof e.data!=='string'){var u=URL.createObjectURL(e.data);im.onload=function(){if(last)URL.revokeObjectURL(last);last=u;};im.src=u;return;}
+    var m=JSON.parse(e.data);
+    if(m.t==='status')st.textContent=m.phone?'Teléfono conectado ✔':'Esperando al teléfono (abre /phone en él)';
+    if(m.t==='saved')st.textContent='Guardado: grabaciones/'+m.file;
+  };
+}
+document.getElementById('go').onclick=function(){ws.send(pack('start'));t0=Date.now();clearInterval(iv);
+  iv=setInterval(function(){var s=Math.floor((Date.now()-t0)/1000);tm.textContent=' '+Math.floor(s/60)+':'+('0'+s%60).slice(-2);},1000);st.textContent='Grabando…';};
+document.getElementById('no').onclick=function(){ws.send(JSON.stringify({t:'stop'}));clearInterval(iv);};
+['cl','or','eq','te'].forEach(function(i){var f=function(){if(ws.readyState===1)ws.send(pack('info'));};document.getElementById(i).oninput=f;document.getElementById(i).onchange=f;});
+connect();
+</script></body></html>
